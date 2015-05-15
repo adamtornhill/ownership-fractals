@@ -1,18 +1,13 @@
 # ownership-fractals
 
-A Quil sketch designed to ... well, that part is up to you.
+A Quil sketch designed to visualize knowledge ownership.
 
 ## Usage
 
-LightTable - open `core.clj` and press `Ctrl+Shift+Enter` to evaluate the file.
-
-Emacs - run cider, open `core.clj` and press `C-c C-k` to evaluate the file.
-
-REPL - run `(require 'ownership-fractals.core)`.
+This repo contains my prototype for generating fractal figures from ownership metrics mined by [Code Maat](https://github.com/adamtornhill/code-maat).
 
 ## License
 
-Copyright © 2014 FIXME
+Copyright © 2015 Adam Tornhill
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the Eclipse Public License version 1.0
