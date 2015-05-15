@@ -1,29 +1,36 @@
 (ns ownership-fractals.core
   (:require [quil.core :as q]
-            [quil.middleware :as m]))
+            [quil.middleware :as m]
+            [clojure.data.csv :as csv]
+            [clojure.java.io :as io]))
 
-(def fake-colors
-  {"adam" 40
-   "ada" 110
-   "bab" 130})
-
-(def fake-ownership
-  [["a.c" "adam" "60" "100"]
-   ["a.c" "ada" "30" "100"]
-   ["a.c" "bab" "10" "100"]])
+(defn- read-csv-from
+  [file]
+  (with-open [in-file (io/reader file)]
+    (doall
+     (csv/read-csv in-file))))
 
 (defn- as-ownership-fraction
   [row]
   (/ (bigint (get row 2))
      (bigint (get row 3))))
 
+(defn- color-picker-from
+  [author-colors]
+  (let [colors (into {} author-colors)]
+    (fn [author]
+      (if-let [color (colors author)]
+        (bigint color)
+        (rand-int 256)))))
+
 (defn- rows->colored-ownership
   [rows author-colors]
-  (for [row rows
-        :let [author (get row 1)
-              color (author-colors author)
-              ownership (as-ownership-fraction row)]]
-    [author [color ownership]]))
+  (let [pick-color-of (color-picker-from author-colors)]
+    (for [row rows
+          :let [author (get row 1)
+                color (pick-color-of author)
+                ownership (as-ownership-fraction row)]]
+      [author [color ownership]])))
 
 (defn build-ownership-model
   [ownership-by-author author-colors]
@@ -31,10 +38,12 @@
   (q/color-mode :hsb)
   ; setup function returns initial state.
   (->>
-   (rows->colored-ownership ownership-by-author author-colors)
+   (rows->colored-ownership
+    (read-csv-from ownership-by-author)
+    (read-csv-from author-colors))
    (into {})))
 
-(def ^:const fractal-size 50)
+(def ^:const fractal-size 150)
 (def ^:const figure-area (* fractal-size fractal-size))
 
 (defn- color-of
@@ -91,20 +100,20 @@
 
 (defn draw-fractal-figures
   [colored-ownership]
-  (q/background 240)
+  (q/background 250)
   (let [rows (sort-by-ownership (vals colored-ownership))
         indexed-rows (map-indexed vector rows)]
-    (q/with-translation [(/ (q/width) 2)
-                         (/ (q/height) 2)]
+    (q/with-translation [(- (/ (q/width) 2) (/ fractal-size 2))
+                         (- (/ (q/height) 2) (/ fractal-size 2))]
       (draw-fractals indexed-rows [fractal-size fractal-size])))
   (q/no-loop)) ; run once
 
 (defn visualize
-  [ownership]
+  [ownership-file color-file]
   (q/defsketch ownership-fractals
     :title "Knowledge Ownership visualized by Fractal Figures"
     :size [500 500]
-    :setup (partial build-ownership-model fake-ownership fake-colors)
+    :setup (partial build-ownership-model ownership-file color-file)
     :draw draw-fractal-figures
     ; The functional-mode middleware allows us to inject 
     ; state into our draw function:
