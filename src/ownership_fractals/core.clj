@@ -72,17 +72,23 @@
         (update-ownership owners pick-color-of (first rows)))
        owners)))
 
-(defn build-ownership-model
-  [ownership-by-author author-colors]
+(defn initialize-sketch
+  [entities-ownership]
   ; Set color mode to HSB (HSV) instead of default RGB.
   (q/color-mode :hsb)
   ; setup function returns initial state.
-  (rows->entity-owners
-   (read-csv-from ownership-by-author)
-   (read-csv-from author-colors)))
+  entities-ownership)
 
-(def ^:const fractal-size 150)
+(def ^:const fractal-size 50)
 (def ^:const figure-area (* fractal-size fractal-size))
+(def ^:const figures-per-row 5)
+(def ^:const padding 10)
+(def ^:const min-size 500)
+
+(defn- drawing-size
+  [n-rows]
+  (max min-size
+       (+ (* n-rows fractal-size) (* (inc n-rows) padding))))
 
 (defn- color-of
   [row]
@@ -149,11 +155,15 @@
 
 (defn visualize
   [ownership-file color-file entity-to-visualize]
-  (q/defsketch ownership-fractals
-    :title (str "Knowledge Ownership of '" entity-to-visualize "' as Fractal Figures")
-    :size [500 500]
-    :setup (partial build-ownership-model ownership-file color-file)
-    :draw (partial draw-fractal-figures entity-to-visualize)
-    ; The functional-mode middleware allows us to inject 
-    ; state into our draw function:
-    :middleware [m/fun-mode]))
+  (let [ownership (read-csv-from ownership-file)
+        colors (read-csv-from color-file)
+        entities-ownership (rows->entity-owners ownership colors)
+        size (drawing-size (count entities-ownership))]
+    (q/defsketch ownership-fractals
+      :title (str "Knowledge Ownership visualized as Fractal Figures")
+      :size [size size]
+      :setup (partial initialize-sketch entities-ownership)
+      :draw (partial draw-fractal-figures entity-to-visualize)
+      ; The functional-mode middleware allows us to inject 
+      ; state into our draw function:
+      :middleware [m/fun-mode])))
