@@ -2,7 +2,8 @@
   (:require [quil.core :as q]
             [quil.middleware :as m]
             [clojure.data.csv :as csv]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 ;;; Algorithm:
 ;;; =========
@@ -39,7 +40,7 @@
     (fn [author]
       (if-let [color (colors author)]
         (bigint color)
-        (rand-int 256)))))
+        0))))
 
 (defn- update-author-ownership
   [pick-color-of known-ownership row]
@@ -77,13 +78,14 @@
   ; Set color mode to HSB (HSV) instead of default RGB.
   (q/color-mode :hsb)
   (q/background 250)
+  (q/text-font (q/create-font "Courier" 10 true))
   ; setup function returns initial state.
   entities-ownership)
 
-(def ^:const fractal-size 50)
+(def ^:const fractal-size 80)
 (def ^:const figure-area (* fractal-size fractal-size))
-(def ^:const figures-per-row 5)
-(def ^:const padding 10)
+(def ^:const figures-per-row 10)
+(def ^:const padding 50)
 
 (defn- drawing-size
   [n-rows]
@@ -151,6 +153,12 @@
       (recur (rest indexed-rows)
              (drawer (ownership-of row) space-left)))))
 
+(defn- strip-path-from
+  [entity]
+  (->
+   (str/split entity #"/|\\")
+   last))
+
 (defn draw-fractal-figures
   [entities-ownership]
   (doseq [[n [entity colored-ownership]] (map-indexed vector entities-ownership)]
@@ -158,6 +166,8 @@
           rows (sort-by-ownership colored-ownership)
           indexed-rows (map-indexed vector rows)]
       (q/with-translation position
+        (q/fill 0) ; fill sets the text color
+        (q/text (strip-path-from entity) 0 (- 0 (/ padding 2)))
         (draw-fractals indexed-rows [fractal-size fractal-size]))))
   (q/no-loop)) ; run once
 
