@@ -84,15 +84,16 @@
 
 (def ^:const fractal-size 80)
 (def ^:const figure-area (* fractal-size fractal-size))
-(def ^:const figures-per-row 10)
+(def ^:const figures-per-row 7)
 (def ^:const padding 50)
+(def ^:const max-rows-at-once 4)
+
+(def ^:const figures-per-batch (* figures-per-row max-rows-at-once))
 
 (defn- drawing-size
   [n-rows]
-  (let [y-rows (+ (quot n-rows figures-per-row)
-                  (if (= 0 (mod n-rows figures-per-row)) 0 1))]
-    [(+ (* figures-per-row fractal-size) (* (inc figures-per-row) padding))
-     (+ (* y-rows fractal-size) (* (inc y-rows) padding))]))
+  [(+ (* figures-per-row fractal-size) (* (inc figures-per-row) padding))
+   (+ (* max-rows-at-once fractal-size) (* (inc max-rows-at-once) padding))])
 
 (defn- fractal-position-of-index
   [n]
@@ -159,28 +160,65 @@
    (str/split entity #"/|\\")
    last))
 
+(defn- adjust-index
+  [[n entity] current]
+  [(- n current) entity])
+
+(defn- next-figures-to-draw
+  [{:keys [total current ownership]}]
+  (->> ownership
+       (drop current)
+       (take (min (- total current) figures-per-batch))
+       (map #(adjust-index % current))))
+
 (defn draw-fractal-figures
-  [entities-ownership]
-  (doseq [[n [entity colored-ownership]] (map-indexed vector entities-ownership)]
+  [state]
+  (q/background 250)
+  (doseq [[n [entity colored-ownership]] (next-figures-to-draw state)]
     (let [position (fractal-position-of-index n)
           rows (sort-by-ownership colored-ownership)
           indexed-rows (map-indexed vector rows)]
       (q/with-translation position
         (q/fill 0) ; fill sets the text color
         (q/text (strip-path-from entity) 0 (- 0 (/ padding 2)))
-        (draw-fractals indexed-rows [fractal-size fractal-size]))))
-  (q/no-loop)) ; run once
+        (draw-fractals indexed-rows [fractal-size fractal-size])))))
+
+(defn- scroll-up-from
+  [{:keys [total current ownership]}]
+  {:total total
+   :current (- current (min figures-per-batch current))
+   :ownership ownership})
+
+(defn- scroll-down-from
+  [{:keys [total current ownership]}]
+  {:total total
+   :current (+ current (min figures-per-batch (- total current)))
+   :ownership ownership})
+
+(defn scroll-figures-event 
+  [old-state direction]
+   (if (= 1 direction)
+     (scroll-up-from old-state)
+     (scroll-down-from old-state)))
+
+(defn- ownership->draw-state
+  [ownership]
+  {:total (count ownership)
+   :current 0
+   :ownership (map-indexed vector ownership)})
 
 (defn visualize
   [ownership-file color-file]
   (let [ownership (read-csv-from ownership-file)
         colors (read-csv-from color-file)
-        entities-ownership (rows->entity-owners ownership colors)]
+        entities-ownership (rows->entity-owners ownership colors)
+        state (ownership->draw-state entities-ownership)]
     (q/defsketch ownership-fractals
       :title (str "Knowledge Ownership visualized as Fractal Figures")
       :size (drawing-size (count entities-ownership))
-      :setup (partial initialize-sketch entities-ownership)
+      :setup (partial initialize-sketch state)
       :draw draw-fractal-figures
+      :mouse-wheel scroll-figures-event
       ; The functional-mode middleware allows us to inject 
       ; state into our draw function:
       :middleware [m/fun-mode])))
