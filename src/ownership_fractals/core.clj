@@ -59,6 +59,12 @@
                (fnil updater [])
                row)))
 
+(defn- sorted-by-number-of
+  [owners]
+  (->> owners
+       (into [])
+       (sort-by (fn [[_ rows]] (count rows)) >)))
+
 (defn- rows->entity-owners
   ([rows author-colors]
      (rows->entity-owners
@@ -71,7 +77,7 @@
         (rest rows)
         pick-color-of
         (update-ownership owners pick-color-of (first rows)))
-       (into [] owners))))
+       (sorted-by-number-of owners))))
 
 (defn initialize-sketch
   [entities-ownership]
