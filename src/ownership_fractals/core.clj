@@ -84,7 +84,7 @@
   ; Set color mode to HSB (HSV) instead of default RGB.
   (q/color-mode :hsb)
   (q/background 250)
-  (q/text-font (q/create-font "Courier" 10 true))
+  (q/text-font (q/create-font "Courier" 8 true))
   ; setup function returns initial state.
   entities-ownership)
 
@@ -160,12 +160,6 @@
       (recur (rest indexed-rows)
              (drawer (ownership-of row) space-left)))))
 
-(defn- strip-path-from
-  [entity]
-  (->
-   (str/split entity #"/|\\")
-   last))
-
 (defn- next-figures-to-draw
   [{:keys [total current ownership]}]
   (->> ownership
@@ -181,7 +175,7 @@
           indexed-rows (map-indexed vector rows)]
       (q/with-translation position
         (q/fill 0) ; fill sets the text color
-        (q/text (strip-path-from entity) 0 (- 0 (/ padding 2)))
+        (q/text entity 0 (- 0 (/ padding (if (= 0 (mod n 2)) 2 4))))
         (draw-fractals indexed-rows [fractal-size fractal-size])))))
 
 (defn- scroll-up-from
