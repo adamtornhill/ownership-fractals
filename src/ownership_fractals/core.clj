@@ -71,7 +71,7 @@
         (rest rows)
         pick-color-of
         (update-ownership owners pick-color-of (first rows)))
-       owners)))
+       (into [] owners))))
 
 (defn initialize-sketch
   [entities-ownership]
@@ -160,21 +160,16 @@
    (str/split entity #"/|\\")
    last))
 
-(defn- adjust-index
-  [[n entity] current]
-  [(- n current) entity])
-
 (defn- next-figures-to-draw
   [{:keys [total current ownership]}]
   (->> ownership
        (drop current)
-       (take (min (- total current) figures-per-batch))
-       (map #(adjust-index % current))))
+       (take (min (- total current) figures-per-batch))))
 
 (defn draw-fractal-figures
   [state]
   (q/background 250)
-  (doseq [[n [entity colored-ownership]] (next-figures-to-draw state)]
+  (doseq [[n [entity colored-ownership]] (map-indexed vector (next-figures-to-draw state))]
     (let [position (fractal-position-of-index n)
           rows (sort-by-ownership colored-ownership)
           indexed-rows (map-indexed vector rows)]
@@ -205,7 +200,7 @@
   [ownership]
   {:total (count ownership)
    :current 0
-   :ownership (map-indexed vector ownership)})
+   :ownership ownership})
 
 (defn visualize
   [ownership-file color-file]
